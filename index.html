@@ -67,9 +67,9 @@
         </div>
 
         <!-- Sync Status Indicator -->
-        <div id="sync-status" class="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-medium border border-emerald-200/60">
-            <span id="sync-indicator-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="sync-status-text">クラウド同期中</span>
+        <div id="sync-status" class="flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-200/60">
+            <span id="sync-indicator-dot" class="w-2 h-2 rounded-full bg-blue-500"></span>
+            <span id="sync-status-text">ローカル保存モード</span>
         </div>
     </div>
 </header>
@@ -230,45 +230,10 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Firebase Logic Integration (ES Modules) -->
+    <!-- Application Logic (LocalStorage Persisted) -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, 
-            signInAnonymously, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, 
-            collection, 
-            doc, 
-            addDoc, 
-            updateDoc, 
-            deleteDoc, 
-            onSnapshot, 
-            serverTimestamp 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBsrqSoAqHpsxwhD1SSlzBMh_i8rvF38_A",
-            authDomain: "task-ac91f.firebaseapp.com",
-            projectId: "task-ac91f",
-            storageBucket: "task-ac91f.firebasestorage.app",
-            messagingSenderId: "601791240999",
-            appId: "1:601791240999:web:ee74f4016cef38784d2702"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
         // Application State
-        let currentUser = null;
-        let unsubscribeTasks = null;
         let tasksData = [];
-        let isLocalStorageMode = false;
 
         // DOM Elements
         const taskList = document.getElementById('task-list');
@@ -313,17 +278,8 @@
             }, 3000);
         }
 
-        // Enable LocalStorage fallback if Firebase is unconfigured or offline
-        function enableLocalStorageMode() {
-            if (isLocalStorageMode) return;
-            isLocalStorageMode = true;
-
-            const statusBox = document.getElementById('sync-status');
-            if (statusBox) {
-                statusBox.className = "flex items-center space-x-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-medium border border-amber-200/60";
-                statusBox.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500"></span><span>ローカル保存モード</span>';
-            }
-
+        // LocalStorage Management
+        function loadFromLocalStorage() {
             const stored = localStorage.getItem('taskflow_tasks');
             if (stored) {
                 try {
@@ -347,8 +303,8 @@
                 if (a.completed !== b.completed) {
                     return a.completed ? 1 : -1;
                 }
-                const timeA = a.createdAt?.seconds || a.createdAt || 0;
-                const timeB = b.createdAt?.seconds || b.createdAt || 0;
+                const timeA = a.createdAt || 0;
+                const timeB = b.createdAt || 0;
                 return timeB - timeA;
             });
 
@@ -356,46 +312,10 @@
             updateStats();
         }
 
-        // Auto Anonymous Sign-In with Fallback
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                setupTasksListener();
-            } else {
-                try {
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.warn("Firebase Auth is disabled or unconfigured. Falling back to LocalStorage:", error);
-                    enableLocalStorageMode();
-                }
-            }
+        // Load tasks from LocalStorage when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            loadFromLocalStorage();
         });
-
-        // Firestore Collection Reference
-        function getUserTasksRef() {
-            if (!currentUser) return null;
-            return collection(db, 'users', currentUser.uid, 'tasks');
-        }
-
-        // Real-time Tasks Sync
-        function setupTasksListener() {
-            const tasksRef = getUserTasksRef();
-            if (!tasksRef) {
-                enableLocalStorageMode();
-                return;
-            }
-
-            unsubscribeTasks = onSnapshot(tasksRef, (snapshot) => {
-                tasksData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                sortAndRenderTasks();
-            }, (error) => {
-                console.warn("Firestore Error, falling back to LocalStorage:", error);
-                enableLocalStorageMode();
-            });
-        }
 
         // Render Dashboard Stats
         function updateStats() {
@@ -558,7 +478,7 @@
         btnCancelModal.addEventListener('click', closeModal);
 
         // Save Task
-        taskForm.addEventListener('submit', async (e) => {
+        taskForm.addEventListener('submit', (e) => {
             e.preventDefault();
 
             const id = taskIdInput.value;
@@ -573,112 +493,53 @@
                 return;
             }
 
-            // LocalStorage Mode
-            if (isLocalStorageMode) {
-                if (id) {
-                    const index = tasksData.findIndex(t => t.id === id);
-                    if (index !== -1) {
-                        tasksData[index] = {
-                            ...tasksData[index],
-                            title,
-                            description,
-                            priority,
-                            dueDate,
-                            category,
-                            updatedAt: Date.now()
-                        };
-                    }
-                    showToast('タスクを更新しました', 'success');
-                } else {
-                    const newTask = {
-                        id: Date.now().toString(),
+            if (id) {
+                const index = tasksData.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    tasksData[index] = {
+                        ...tasksData[index],
                         title,
                         description,
                         priority,
                         dueDate,
                         category,
-                        completed: false,
-                        createdAt: Date.now()
+                        updatedAt: Date.now()
                     };
-                    tasksData.push(newTask);
-                    showToast('新しいタスクを追加しました', 'success');
                 }
-                saveToLocalStorage();
-                closeModal();
-                return;
+                showToast('タスクを更新しました', 'success');
+            } else {
+                const newTask = {
+                    id: Date.now().toString(),
+                    title,
+                    description,
+                    priority,
+                    dueDate,
+                    category,
+                    completed: false,
+                    createdAt: Date.now()
+                };
+                tasksData.push(newTask);
+                showToast('新しいタスクを追加しました', 'success');
             }
 
-            // Firebase Firestore Mode
-            try {
-                const tasksRef = getUserTasksRef();
-                if (id) {
-                    const docRef = doc(db, 'users', currentUser.uid, 'tasks', id);
-                    await updateDoc(docRef, {
-                        title,
-                        description,
-                        priority,
-                        dueDate,
-                        category,
-                        updatedAt: serverTimestamp()
-                    });
-                    showToast('タスクを更新しました', 'success');
-                } else {
-                    await addDoc(tasksRef, {
-                        title,
-                        description,
-                        priority,
-                        dueDate,
-                        category,
-                        completed: false,
-                        createdAt: serverTimestamp()
-                    });
-                    showToast('新しいタスクを追加しました', 'success');
-                }
-                closeModal();
-            } catch (error) {
-                console.error("Save Error:", error);
-                showToast('保存に失敗しました。ローカル保存に切り替えます', 'error');
-                enableLocalStorageMode();
-            }
+            saveToLocalStorage();
+            closeModal();
         });
 
         // Toggle Task Completed Status
-        async function toggleTaskStatus(id, completed) {
-            if (isLocalStorageMode) {
-                const task = tasksData.find(t => t.id === id);
-                if (task) {
-                    task.completed = completed;
-                    saveToLocalStorage();
-                }
-                return;
-            }
-
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'tasks', id);
-                await updateDoc(docRef, { completed });
-            } catch (error) {
-                showToast('ステータスの更新に失敗しました', 'error');
+        function toggleTaskStatus(id, completed) {
+            const task = tasksData.find(t => t.id === id);
+            if (task) {
+                task.completed = completed;
+                saveToLocalStorage();
             }
         }
 
         // Delete Task
-        async function deleteTask(id) {
-            if (isLocalStorageMode) {
-                tasksData = tasksData.filter(t => t.id !== id);
-                saveToLocalStorage();
-                showToast('タスクを削除しました', 'info');
-                return;
-            }
-
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'tasks', id);
-                await deleteDoc(docRef);
-                showToast('タスクを削除しました', 'info');
-            } catch (error) {
-                showToast('削除に失敗しました', 'error');
-            }
+        function deleteTask(id) {
+            tasksData = tasksData.filter(t => t.id !== id);
+            saveToLocalStorage();
+            showToast('タスクを削除しました', 'info');
         }
 
         // Filter and Search Event Listeners
