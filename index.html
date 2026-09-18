@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直売所 交流＆運営タスク管理ポータル</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
+        }
+        .farm-gradient {
+            background: linear-gradient(135deg, #15803d 0%, #166534 50%, #052e16 100%);
+        }
+        .farm-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .farm-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 bg-slate-50 min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="farm-gradient text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16 sm:h-20">
+                <!-- ロゴ / タイトル -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-amber-400 text-green-900 p-2.5 rounded-2xl shadow-inner font-bold text-xl flex items-center justify-center">
+                        <i class="fa-solid font-bold fa-wheat-awn text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight">採れたて直売所</h1>
+                        <p class="text-xs text-green-200 hidden sm:block">お客さまの満足と円滑な店舗運営をつなぐポータル</p>
+                    </div>
+                </div>
+
+                <!-- ユーザーログイン情報 & アクション -->
+                <div class="flex items-center space-x-3">
+                    <!-- GitHub Pages & Firebase ガイドボタン -->
+                    <button onclick="toggleSetupModal(true)" class="hidden md:inline-flex items-center px-3 py-1.5 text-xs font-medium bg-green-800 hover:bg-green-700 text-green-100 rounded-lg border border-green-600/50 transition">
+                        <i class="fa-solid fa-circle-question mr-1.5"></i> 設置・公開ガイド
+                    </button>
+
+                    <!-- 認証状態エリア -->
+                    <div id="auth-container" class="flex items-center space-x-2">
+                        <!-- JSで動的に書き換え -->
+                        <div class="animate-pulse flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-green-700 rounded-full"></div>
+                            <div class="h-4 bg-green-700 rounded w-20 hidden sm:block"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- アラートメッセージバナー（トースト） -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Firebase設定チェック通知 -->
+    <div id="demo-mode-banner" class="bg-amber-500 text-amber-950 text-xs sm:text-sm font-medium px-4 py-2.5 shadow-md flex justify-between items-center hidden">
+        <div class="max-w-7xl mx-auto w-full flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-900 text-base"></i>
+                <span><strong>デモ・オフラインモード表示中：</strong> Firebaseの設定が無効か読み込み中のためローカルデータで動作しています。本番利用にはFirebase設定を行ってください。</span>
+            </div>
+            <button onclick="toggleSetupModal(true)" class="underline text-xs hover:text-white ml-2 whitespace-nowrap">設定手順を見る</button>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ領域 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ナビゲーションタブ -->
+        <div class="flex flex-wrap border-b border-slate-200 mb-6 bg-white rounded-xl shadow-sm p-1.5 gap-1">
+            <button id="tab-btn-feedback" onclick="switchTab('feedback')" class="tab-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center space-x-2 transition bg-green-700 text-white shadow">
+                <i class="fa-solid fa-comments"></i>
+                <span>お客様の意見・ご要望</span>
+                <span id="badge-feedback-count" class="ml-1 px-2 py-0.5 text-xs bg-green-800 text-green-100 rounded-full">0</span>
+            </button>
+            <button id="tab-btn-tasks" onclick="switchTab('tasks')" class="tab-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-green-700 hover:bg-slate-100 flex items-center justify-center space-x-2 transition">
+                <i class="fa-solid fa-list-check"></i>
+                <span>直売所タスク管理</span>
+                <span id="badge-tasks-count" class="ml-1 px-2 py-0.5 text-xs bg-slate-200 text-slate-700 rounded-full">0</span>
+            </button>
+            <button id="tab-btn-checklist" onclick="switchTab('checklist')" class="tab-btn flex-1 sm:flex-initial px-5 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-green-700 hover:bg-slate-100 flex items-center justify-center space-x-2 transition">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>日課チェックリスト</span>
+            </button>
+            <button onclick="toggleSetupModal(true)" class="md:hidden flex-initial px-3 py-2.5 text-slate-500 hover:text-green-700 rounded-lg text-sm font-medium flex items-center">
+                <i class="fa-solid fa-circle-info"></i>
+            </button>
+        </div>
+
+        <!-- ================= タブ1: お客様の意見・ご要望 ================= -->
+        <div id="tab-content-feedback" class="tab-pane space-y-6">
+            <!-- ヒーロー＆投稿フォーム呼び出しバナー -->
+            <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div class="relative z-10 max-w-2xl">
+                    <span class="inline-block px-3 py-1 bg-emerald-800/60 rounded-full text-xs font-semibold tracking-wider text-emerald-200 mb-3">直売所コミュニティ</span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold mb-2">皆さまのお声をお聞かせください！</h2>
+                    <p class="text-emerald-100 text-sm mb-4">「こんな野菜を置いてほしい」「店舗サービスについて」「応援メッセージ」など自由にご意見をお寄せください。スタッフが確認し店舗運営に反映します！</p>
+                    <button onclick="scrollToFeedbackForm()" class="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-green-950 rounded-xl font-bold text-sm shadow-md transition flex items-center space-x-2">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>ご意見・リクエストを投稿する</span>
+                    </button>
+                </div>
+                <i class="fa-solid fa-basket-shopping absolute -right-6 -bottom-6 text-9xl text-white/10 pointer-events-none"></i>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 左側: 投稿フォーム -->
+                <div class="lg:col-span-1">
+                    <div id="feedback-form-card" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 sticky top-24">
+                        <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
+                            <i class="fa-solid fa-comment-medical text-green-600"></i>
+                            <span>ご意見・リクエスト投稿</span>
+                        </h3>
+
+                        <form id="feedback-form" onsubmit="handleFeedbackSubmit(event)" class="space-y-4">
+                            <!-- カテゴリ選択 -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">区分・分類</label>
+                                <select id="feedback-category" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-50 outline-none">
+                                    <option value="商品リクエスト">🥦 出品・入荷リクエスト</option>
+                                    <option value="店舗・サービス">🏪 店舗・サービスのご意見</option>
+                                    <option value="応援・感想">✨ 応援・メッセージ</option>
+                                    <option value="その他">💡 その他提案</option>
+                                </select>
+                            </div>
+
+                            <!-- タイトル -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">タイトル <span class="text-red-500">*</span></label>
+                                <input type="text" id="feedback-title" required placeholder="例: 朝採れトマトの入荷予定を知りたい" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 outline-none">
+                            </div>
+
+                            <!-- 内容 -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">ご意見内容 <span class="text-red-500">*</span></label>
+                                <textarea id="feedback-content" required rows="4" placeholder="具体的にご記入いただけると幸いです。" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+                            </div>
+
+                            <!-- ログイン未完了警告 -->
+                            <div id="feedback-auth-notice" class="hidden p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-start space-x-2">
+                                <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
+                                <span>投稿にはGoogleログインが必要です。右上のボタンからログインしてください。</span>
+                            </div>
+
+                            <!-- 送信ボタン -->
+                            <button type="submit" id="feedback-submit-btn" class="w-full py-3 bg-green-700 hover:bg-green-800 text-white font-bold rounded-xl text-sm shadow transition flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>意見を送信する</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 右側: 投稿一覧＆フィルター -->
+                <div class="lg:col-span-2 space-y-4">
+                    <!-- フィルターバー -->
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center space-x-2 text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-filter text-green-600"></i>
+                            <span>絞り込み:</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button onclick="filterFeedback('ALL')" class="feedback-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-green-700 text-white shadow-sm" data-cat="ALL">すべて</button>
+                            <button onclick="filterFeedback('商品リクエスト')" class="feedback-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100" data-cat="商品リクエスト">🥦 商品リクエスト</button>
+                            <button onclick="filterFeedback('店舗・サービス')" class="feedback-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100" data-cat="店舗・サービス">🏪 店舗・サービス</button>
+                            <button onclick="filterFeedback('応援・感想')" class="feedback-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100" data-cat="応援・感想">✨ 応援・感想</button>
+                        </div>
+                    </div>
+
+                    <!-- 意見一覧コンテナ -->
+                    <div id="feedback-list" class="space-y-4">
+                        <!-- 動的に生成されます -->
+                        <div class="text-center py-12 bg-white rounded-2xl border border-slate-200">
+                            <i class="fa-solid fa-spinner fa-spin text-3xl text-green-600 mb-3"></i>
+                            <p class="text-slate-500 text-sm">お客様からの意見を読み込み中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= タブ2: 直売所タスク管理 ================= -->
+        <div id="tab-content-tasks" class="tab-pane hidden space-y-6">
+            <!-- コントロールバー（新規タスク作成・ビュー切り替え） -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+                        <i class="fa-solid fa-tasks text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">店舗運営タスクボード</h2>
+                        <p class="text-xs text-slate-500">お客様の意見や店舗維持に必要なタスクをリアルタイム管理</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <button onclick="openTaskModal()" class="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-xl text-sm font-bold shadow transition flex items-center space-x-2">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>新規タスク追加</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- カンバンボード (4列: 未対応, 対応中, 保留, 完了) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- 未対応 -->
+                <div class="bg-slate-100/80 rounded-2xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
+                    <div class="flex items-center justify-between px-2 py-2 mb-2">
+                        <div class="flex items-center space-x-2 font-bold text-slate-700 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+                            <span>未対応</span>
+                        </div>
+                        <span id="count-todo" class="px-2 py-0.5 text-xs bg-slate-200 text-slate-700 font-bold rounded-full">0</span>
+                    </div>
+                    <div id="kanban-todo" class="flex-1 space-y-3 custom-scrollbar overflow-y-auto pr-1">
+                        <!-- cards -->
+                    </div>
+                </div>
+
+                <!-- 対応中 -->
+                <div class="bg-slate-100/80 rounded-2xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
+                    <div class="flex items-center justify-between px-2 py-2 mb-2">
+                        <div class="flex items-center space-x-2 font-bold text-slate-700 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                            <span>対応中</span>
+                        </div>
+                        <span id="count-in_progress" class="px-2 py-0.5 text-xs bg-slate-200 text-slate-700 font-bold rounded-full">0</span>
+                    </div>
+                    <div id="kanban-in_progress" class="flex-1 space-y-3 custom-scrollbar overflow-y-auto pr-1">
+                        <!-- cards -->
+                    </div>
+                </div>
+
+                <!-- 保留・確認中 -->
+                <div class="bg-slate-100/80 rounded-2xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
+                    <div class="flex items-center justify-between px-2 py-2 mb-2">
+                        <div class="flex items-center space-x-2 font-bold text-slate-700 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                            <span>保留・確認中</span>
+                        </div>
+                        <span id="count-pending" class="px-2 py-0.5 text-xs bg-slate-200 text-slate-700 font-bold rounded-full">0</span>
+                    </div>
+                    <div id="kanban-pending" class="flex-1 space-y-3 custom-scrollbar overflow-y-auto pr-1">
+                        <!-- cards -->
+                    </div>
+                </div>
+
+                <!-- 完了 -->
+                <div class="bg-slate-100/80 rounded-2xl p-3 border border-slate-200 flex flex-col min-h-[500px]">
+                    <div class="flex items-center justify-between px-2 py-2 mb-2">
+                        <div class="flex items-center space-x-2 font-bold text-slate-700 text-sm">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                            <span>完了</span>
+                        </div>
+                        <span id="count-done" class="px-2 py-0.5 text-xs bg-slate-200 text-slate-700 font-bold rounded-full">0</span>
+                    </div>
+                    <div id="kanban-done" class="flex-1 space-y-3 custom-scrollbar overflow-y-auto pr-1">
+                        <!-- cards -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= タブ3: 日課チェックリスト ================= -->
+        <div id="tab-content-checklist" class="tab-pane hidden space-y-6 max-w-4xl mx-auto">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center space-x-2">
+                            <i class="fa-solid fa-clipboard-check text-green-600"></i>
+                            <span>直売所 開店・閉店日常業務チェック</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">毎日のルーティン業務を確実に実行するためのインタラクティブリスト</p>
+                    </div>
+                    <button onclick="resetChecklist()" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> リセット
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 開店前準備 -->
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-sm text-green-800 bg-green-50 px-3 py-2 rounded-xl flex items-center justify-between border border-green-100">
+                            <span><i class="fa-solid fa-sun mr-2 text-amber-500"></i>開店前チェック (朝)</span>
+                            <span id="morning-progress" class="text-xs font-normal">0/5</span>
+                        </h3>
+                        <div class="space-y-2 text-sm text-slate-700" id="morning-checklist">
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-green-600 focus:ring-green-500 w-4 h-4">
+                                <span>レジ端末の起動＆釣り銭準備確認</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-green-600 focus:ring-green-500 w-4 h-4">
+                                <span>本日入荷農作物（野菜・果物）の受入れ＆検品</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-green-600 focus:ring-green-500 w-4 h-4">
+                                <span>価格POP・産地カードの掲示確認</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-green-600 focus:ring-green-500 w-4 h-4">
+                                <span>陳列棚およびフロアの清掃・消毒</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-green-600 focus:ring-green-500 w-4 h-4">
+                                <span>のぼり旗・看板の店頭設置</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 閉店後作業 -->
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-sm text-indigo-800 bg-indigo-50 px-3 py-2 rounded-xl flex items-center justify-between border border-indigo-100">
+                            <span><i class="fa-solid fa-moon mr-2 text-indigo-500"></i>閉店後チェック (夕・夜)</span>
+                            <span id="evening-progress" class="text-xs font-normal">0/5</span>
+                        </h3>
+                        <div class="space-y-2 text-sm text-slate-700" id="evening-checklist">
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                <span>売上金の精算＆POSレジ締め処理</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                <span>残った生鮮品・農産物の鮮度チェック＆保冷保管</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                <span>のぼり旗・屋外看板の収容</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                <span>ゴミ分別回収＆店舗フロア掃き掃除</span>
+                            </label>
+                            <label class="flex items-start space-x-3 p-3 rounded-xl hover:bg-slate-50 border border-slate-100 cursor-pointer">
+                                <input type="checkbox" onchange="updateChecklistProgress()" class="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                                <span>エアコン・照明消灯および施錠確認</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- モーダル: タスク作成/編集 -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 id="task-modal-title" class="font-bold text-lg text-slate-800">新規タスク追加</h3>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="task-form" onsubmit="handleTaskSubmit(event)" class="space-y-4">
+                <input type="hidden" id="task-edit-id" value="">
+                <input type="hidden" id="task-source-feedback-id" value="">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">タスク名 <span class="text-red-500">*</span></label>
+                    <input type="text" id="task-title" required placeholder="例: トマト棚のPOP付け替え" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">ステータス</label>
+                        <select id="task-status" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 bg-slate-50 outline-none">
+                            <option value="todo">🔴 未対応</option>
+                            <option value="in_progress">🟡 対応中</option>
+                            <option value="pending">🔵 保留</option>
+                            <option value="done">🟢 完了</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">優先度</label>
+                        <select id="task-priority" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 bg-slate-50 outline-none">
+                            <option value="high">🔥 高</option>
+                            <option value="medium" selected>⚡ 中</option>
+                            <option value="low">🌱 低</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">担当者</label>
+                        <input type="text" id="task-assignee" placeholder="例: 店長 / 担当者名" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">カテゴリ</label>
+                        <select id="task-category" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 bg-slate-50 outline-none">
+                            <option value="在庫・入荷">📦 在庫・入荷</option>
+                            <option value="店舗環境">🏪 店舗環境</option>
+                            <option value="接客・要望">💬 お客様要望</option>
+                            <option value="清掃・衛生">🧹 清掃・衛生</option>
+                            <option value="その他">📝 その他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">メモ・詳細説明</label>
+                    <textarea id="task-description" rows="3" placeholder="タスクの具体的な内容やメモを記載" class="w-full text-sm border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500 outline-none resize-none"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl font-medium">キャンセル</button>
+                    <button type="submit" class="px-5 py-2 bg-green-700 hover:bg-green-800 text-white font-bold text-sm rounded-xl shadow transition">保存する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- モーダル: GitHub Pages & Firebase 設定ガイド -->
+    <div id="setup-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center space-x-2 text-green-800">
+                    <i class="fa-solid fa-rocket text-xl"></i>
+                    <h3 class="font-bold text-lg text-slate-800">GitHub Pages ＆ Firebase 設置ガイド</h3>
+                </div>
+                <button onclick="toggleSetupModal(false)" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-sm text-slate-600">
+                <div class="p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
+                    <p class="font-bold mb-1"><i class="fa-solid fa-circle-check mr-1 text-amber-600"></i> ご提供いただいた設定情報をコード内に埋め込んであります！</p>
+                    <p>この HTML ファイル単体で GitHub Pages に設置するだけで即座に動かすことができます。</p>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-800 text-sm flex items-center">
+                        <span class="w-6 h-6 rounded-full bg-green-700 text-white text-xs flex items-center justify-center mr-2">1</span>
+                        GitHub Pages での公開手順
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-1 text-xs text-slate-600 pl-8">
+                        <li>GitHub に新しいリポジトリ（例: <code class="bg-slate-100 px-1.5 py-0.5 rounded border">chokubai-app</code>）を作成します。</li>
+                        <li>このソースコードを <code class="bg-slate-100 px-1.5 py-0.5 rounded border">index.html</code> という名前でリポジトリにコミット＆プッシュします。</li>
+                        <li>GitHub リポジトリの <strong>Settings &gt; Pages</strong> を開き、Source を <strong>Deploy from a branch (main)</strong> に設定して Save します。</li>
+                    </ol>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-800 text-sm flex items-center">
+                        <span class="w-6 h-6 rounded-full bg-green-700 text-white text-xs flex items-center justify-center mr-2">2</span>
+                        Firebase コンソールでの必要な設定（重要）
+                    </h4>
+                    <div class="space-y-2 text-xs pl-8">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                            <p class="font-bold text-slate-800">① Googleログインの有効化</p>
+                            <p class="mt-1">Firebase Console &gt; Authentication &gt; Sign-in method で <strong>Google</strong> を有効（Enabled）にしてください。</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                            <p class="font-bold text-slate-800">② 承認済みドメインの追加</p>
+                            <p class="mt-1">Authentication &gt; Settings &gt; Authorized domains に <code class="bg-slate-200 px-1 rounded">ユーザー名.github.io</code> を追加してください。</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                            <p class="font-bold text-slate-800">③ Firestore Database の作成ルール</p>
+                            <p class="mt-1">Firestore Database を作成し、Rules タブで読み書き許可を設定してください（テストモード推奨）。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex justify-end">
+                <button onclick="toggleSetupModal(false)" class="px-5 py-2 bg-slate-800 text-white font-bold text-sm rounded-xl hover:bg-slate-700">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Modules Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ユーザー提供の Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBsrqSoAqHpsxwhD1SSlzBMh_i8rvF38_A",
+            authDomain: "task-ac91f.firebaseapp.com",
+            projectId: "task-ac91f",
+            storageBucket: "task-ac91f.firebasestorage.app",
+            messagingSenderId: "601791240999",
+            appId: "1:601791240999:web:ee74f4016cef38784d2702"
+        };
+
+        let app, auth, db;
+        let currentUser = null;
+        let isFirebaseActive = false;
+        let activeFilter = 'ALL';
+
+        // メモリ内初期データ（Firestore非接続時のフォールバック用）
+        let localFeedbacks = [
+            {
+                id: 'demo-f1',
+                category: '商品リクエスト',
+                title: '無農薬の朝採れキュウリを入荷してほしいです',
+                content: 'いつも利用しています！近所の農家さんが作った朝採れのキュウリがあると嬉しいです。ぬか漬けに使いたいです。',
+                authorName: '佐藤 まゆみ',
+                authorPhoto: 'https://placehold.co/100x100/166534/ffffff?text=佐藤',
+                createdAt: new Date(Date.now() - 3600000 * 5),
+                likes: 4,
+                convertedToTask: true
+            },
+            {
+                id: 'demo-f2',
+                category: '店舗・サービス',
+                title: '夕方17時以降の品揃えを増やしてほしいです',
+                content: '仕事帰りに寄ることが多いのですが、17時過ぎだと売り切れが多い印象です。少し夕方の補充を増やせますでしょうか？',
+                authorName: '田中 健一',
+                authorPhoto: 'https://placehold.co/100x100/0284c7/ffffff?text=田中',
+                createdAt: new Date(Date.now() - 3600000 * 24),
+                likes: 7,
+                convertedToTask: false
+            }
+        ];
+
+        let localTasks = [
+            {
+                id: 'demo-t1',
+                title: '地元キュウリ農家様へ出荷打診',
+                status: 'in_progress',
+                priority: 'high',
+                assignee: '店長',
+                category: '在庫・入荷',
+                description: 'お客様リクエスト（佐藤様）に基づき、鈴木農園様に無農薬キュウリの追加出荷を相談する。',
+                createdAt: new Date()
+            },
+            {
+                id: 'demo-t2',
+                title: '夕方入荷用のタイムスケジュールPOP作成',
+                status: 'todo',
+                priority: 'medium',
+                assignee: 'スタッフ高橋',
+                category: '店舗環境',
+                description: '16時再入荷予定の野菜コーナー案内チラシ・ボードの作成',
+                createdAt: new Date()
+            }
+        ];
+
+        // 初期化処理
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            isFirebaseActive = true;
+        } catch (e) {
+            console.warn("Firebase初期化失敗。フォールバック表示モードにします。", e);
+            document.getElementById('demo-mode-banner').classList.remove('hidden');
+        }
+
+        // 認証リスナー
+        if (isFirebaseActive && auth) {
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                renderAuthUI(user);
+            });
+        } else {
+            renderAuthUI(null);
+        }
+
+        function renderAuthUI(user) {
+            const container = document.getElementById('auth-container');
+            const notice = document.getElementById('feedback-auth-notice');
+
+            if (user) {
+                if (notice) notice.classList.add('hidden');
+                container.innerHTML = `
+                    <div class="flex items-center space-x-2 bg-green-900/60 p-1.5 rounded-full pl-2 pr-3 border border-green-600/40">
+                        <img src="${user.photoURL || 'https://placehold.co/100x100/15803d/ffffff?text=User'}" class="w-7 h-7 rounded-full border border-amber-300 object-cover" alt="User">
+                        <span class="text-xs font-bold text-green-100 hidden sm:inline">${escapeHTML(user.displayName || 'ユーザー')}様</span>
+                        <button id="btn-logout" class="ml-1 text-green-300 hover:text-amber-300 text-xs p-1" title="ログアウト">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                `;
+                document.getElementById('btn-logout').addEventListener('click', handleLogout);
+            } else {
+                if (notice) notice.classList.remove('hidden');
+                container.innerHTML = `
+                    <button id="btn-login" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-green-950 font-bold rounded-xl text-xs shadow transition flex items-center space-x-1.5">
+                        <i class="fa-brands fa-google"></i>
+                        <span>Googleログイン</span>
+                    </button>
+                `;
+                document.getElementById('btn-login').addEventListener('click', handleGoogleLogin);
+            }
+        }
+
+        async function handleGoogleLogin() {
+            if (!isFirebaseActive) {
+                showToast('Firebaseが初期化されていないためデモユーザーとしてログインします', 'info');
+                currentUser = { displayName: 'デモ来店客', photoURL: 'https://placehold.co/100x100/166534/ffffff?text=Demo', uid: 'demo-123' };
+                renderAuthUI(currentUser);
+                return;
+            }
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+                showToast('ログインしました！', 'success');
+            } catch (error) {
+                console.error("Login Error:", error);
+                showToast('Googleログインに失敗しました: ' + error.message, 'error');
+            }
+        }
+
+        async function handleLogout() {
+            if (!isFirebaseActive) {
+                currentUser = null;
+                renderAuthUI(null);
+                showToast('ログアウトしました', 'info');
+                return;
+            }
+            try {
+                await signOut(auth);
+                showToast('ログアウトしました', 'info');
+            } catch (error) {
+                console.error("Logout Error:", error);
+            }
+        }
+
+        // リアルタイムデータ同期の初期化
+        function initDataListeners() {
+            if (isFirebaseActive && db) {
+                // ご意見コレクションの監視
+                try {
+                    const feedbackQuery = collection(db, 'artifacts', 'chokubai-app', 'public', 'data', 'feedbacks');
+                    onSnapshot(feedbackQuery, (snapshot) => {
+                        const items = [];
+                        snapshot.forEach(docSnap => {
+                            items.push({ id: docSnap.id, ...docSnap.data() });
+                        });
+                        // 日時ソート
+                        items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                        if (items.length > 0) localFeedbacks = items;
+                        renderFeedbacks();
+                    }, (error) => {
+                        console.warn("Firestore feedback listener error:", error);
+                        renderFeedbacks();
+                    });
+
+                    // タスクコレクションの監視
+                    const taskQuery = collection(db, 'artifacts', 'chokubai-app', 'public', 'data', 'tasks');
+                    onSnapshot(taskQuery, (snapshot) => {
+                        const items = [];
+                        snapshot.forEach(docSnap => {
+                            items.push({ id: docSnap.id, ...docSnap.data() });
+                        });
+                        if (items.length > 0) localTasks = items;
+                        renderTasks();
+                    }, (error) => {
+                        console.warn("Firestore task listener error:", error);
+                        renderTasks();
+                    });
+
+                } catch (err) {
+                    console.error("Snapshot binding error:", err);
+                    renderFeedbacks();
+                    renderTasks();
+                }
+            } else {
+                renderFeedbacks();
+                renderTasks();
+            }
+        }
+
+        // 投稿処理 (ご意見)
+        window.handleFeedbackSubmit = async function(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                showToast('ご意見の投稿にはログインが必要です。', 'error');
+                return;
+            }
+
+            const title = document.getElementById('feedback-title').value.trim();
+            const content = document.getElementById('feedback-content').value.trim();
+            const category = document.getElementById('feedback-category').value;
+
+            if (!title || !content) return;
+
+            const submitBtn = document.getElementById('feedback-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> 送信中...`;
+
+            const newFeedback = {
+                title,
+                content,
+                category,
+                authorName: currentUser.displayName || '匿名様',
+                authorPhoto: currentUser.photoURL || '',
+                authorUid: currentUser.uid,
+                createdAt: isFirebaseActive ? serverTimestamp() : new Date(),
+                likes: 0,
+                convertedToTask: false
+            };
+
+            try {
+                if (isFirebaseActive && db) {
+                    await addDoc(collection(db, 'artifacts', 'chokubai-app', 'public', 'data', 'feedbacks'), newFeedback);
+                } else {
+                    newFeedback.id = 'demo-' + Date.now();
+                    newFeedback.createdAt = new Date();
+                    localFeedbacks.unshift(newFeedback);
+                    renderFeedbacks();
+                }
+
+                document.getElementById('feedback-form').reset();
+                showToast('ご意見をお送りいただきありがとうございました！', 'success');
+            } catch (err) {
+                console.error("Feedback submit error:", err);
+                showToast('送信中にエラーが発生しました。', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane mr-2"></i> 意見を送信する`;
+            }
+        };
+
+        // いいね機能
+        window.likeFeedback = async function(id) {
+            const item = localFeedbacks.find(f => f.id === id);
+            if (!item) return;
+
+            if (isFirebaseActive && db) {
+                try {
+                    const docRef = doc(db, 'artifacts', 'chokubai-app', 'public', 'data', 'feedbacks', id);
+                    await updateDoc(docRef, { likes: (item.likes || 0) + 1 });
+                } catch (e) {
+                    console.error("Like update error:", e);
+                }
+            } else {
+                item.likes = (item.likes || 0) + 1;
+                renderFeedbacks();
+            }
+            showToast('共感のいいね！を送信しました', 'info');
+        };
+
+        // フィルター切り替え
+        window.filterFeedback = function(cat) {
+            activeFilter = cat;
+            document.querySelectorAll('.feedback-filter-btn').forEach(btn => {
+                if (btn.getAttribute('data-cat') === cat) {
+                    btn.className = "feedback-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-green-700 text-white shadow-sm";
+                } else {
+                    btn.className = "feedback-filter-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100";
+                }
+            });
+            renderFeedbacks();
+        };
+
+        // ご意見一覧描画
+        function renderFeedbacks() {
+            const container = document.getElementById('feedback-list');
+            const badge = document.getElementById('badge-feedback-count');
+
+            let filtered = activeFilter === 'ALL'
+                ? localFeedbacks
+                : localFeedbacks.filter(f => f.category === activeFilter);
+
+            if (badge) badge.textContent = localFeedbacks.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 text-center border border-slate-200">
+                        <i class="fa-regular fa-comment-dots text-4xl text-slate-300 mb-2"></i>
+                        <p class="text-slate-500 font-bold text-sm">該当するご意見はまだありません</p>
+                        <p class="text-xs text-slate-400 mt-1">左側のフォームから一番最初のご意見を投稿してみましょう！</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => {
+                const dateStr = item.createdAt?.seconds 
+                    ? new Date(item.createdAt.seconds * 1000).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : new Date(item.createdAt || Date.now()).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                return `
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 farm-card space-y-3">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center space-x-3">
+                                <img src="${item.authorPhoto || 'https://placehold.co/100x100/166534/ffffff?text=客'}" class="w-9 h-9 rounded-full object-cover border border-slate-200" alt="Avatar">
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-bold text-slate-800">${escapeHTML(item.authorName)}</span>
+                                        <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">${escapeHTML(item.category)}</span>
+                                    </div>
+                                    <span class="text-[11px] text-slate-400">${dateStr}</span>
+                                </div>
+                            </div>
+
+                            ${item.convertedToTask ? `
+                                <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center space-x-1">
+                                    <i class="fa-solid fa-check"></i>
+                                    <span>店舗タスク化済</span>
+                                </span>
+                            ` : ''}
+                        </div>
+
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-base mb-1">${escapeHTML(item.title)}</h4>
+                            <p class="text-sm text-slate-600 whitespace-pre-line leading-relaxed">${escapeHTML(item.content)}</p>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <button onclick="likeFeedback('${item.id}')" class="flex items-center space-x-1.5 text-xs text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition font-bold">
+                                <i class="fa-solid fa-heart"></i>
+                                <span>共感 (${item.likes || 0})</span>
+                            </button>
+
+                            <button onclick="convertFeedbackToTask('${item.id}')" class="text-xs font-bold text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition flex items-center space-x-1">
+                                <i class="fa-solid fa-square-plus"></i>
+                                <span>運営タスクへ展開</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 意見をタスクに変換
+        window.convertFeedbackToTask = function(feedbackId) {
+            const feedback = localFeedbacks.find(f => f.id === feedbackId);
+            if (!feedback) return;
+
+            // タスクモーダルに値をプリセット
+            document.getElementById('task-edit-id').value = '';
+            document.getElementById('task-source-feedback-id').value = feedbackId;
+            document.getElementById('task-title').value = `【お客様要望対応】${feedback.title}`;
+            document.getElementById('task-status').value = 'todo';
+            document.getElementById('task-priority').value = 'high';
+            document.getElementById('task-category').value = '接客・要望';
+            document.getElementById('task-description').value = `【元のお声 (${feedback.authorName}様より)】\n${feedback.content}`;
+
+            switchTab('tasks');
+            openTaskModal();
+        };
+
+        // タスク送信
+        window.handleTaskSubmit = async function(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('task-edit-id').value;
+            const sourceFeedbackId = document.getElementById('task-source-feedback-id').value;
+
+            const taskData = {
+                title: document.getElementById('task-title').value.trim(),
+                status: document.getElementById('task-status').value,
+                priority: document.getElementById('task-priority').value,
+                assignee: document.getElementById('task-assignee').value.trim() || '未割り当て',
+                category: document.getElementById('task-category').value,
+                description: document.getElementById('task-description').value.trim(),
+                createdAt: isFirebaseActive ? serverTimestamp() : new Date()
+            };
+
+            try {
+                if (editId) {
+                    // 編集
+                    if (isFirebaseActive && db) {
+                        await updateDoc(doc(db, 'artifacts', 'chokubai-app', 'public', 'data', 'tasks', editId), taskData);
+                    } else {
+                        const idx = localTasks.findIndex(t => t.id === editId);
+                        if (idx !== -1) localTasks[idx] = { ...localTasks[idx], ...taskData };
+                    }
+                    showToast('タスクを更新しました', 'success');
+                } else {
+                    // 新規作成
+                    if (isFirebaseActive && db) {
+                        await addDoc(collection(db, 'artifacts', 'chokubai-app', 'public', 'data', 'tasks'), taskData);
+                        if (sourceFeedbackId) {
+                            const fbRef = doc(db, 'artifacts', 'chokubai-app', 'public', 'data', 'feedbacks', sourceFeedbackId);
+                            await updateDoc(fbRef, { convertedToTask: true });
+                        }
+                    } else {
+                        taskData.id = 'demo-t-' + Date.now();
+                        localTasks.unshift(taskData);
+                        if (sourceFeedbackId) {
+                            const fb = localFeedbacks.find(f => f.id === sourceFeedbackId);
+                            if (fb) fb.convertedToTask = true;
+                            renderFeedbacks();
+                        }
+                    }
+                    showToast('タスクを作成しました！', 'success');
+                }
+
+                closeTaskModal();
+                renderTasks();
+            } catch (err) {
+                console.error("Task save error:", err);
+                showToast('タスク保存中にエラーが発生しました', 'error');
+            }
+        };
+
+        // タスクステータス移動
+        window.updateTaskStatus = async function(taskId, newStatus) {
+            const task = localTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            if (isFirebaseActive && db) {
+                try {
+                    await updateDoc(doc(db, 'artifacts', 'chokubai-app', 'public', 'data', 'tasks', taskId), { status: newStatus });
+                } catch (e) {
+                    console.error("Status update error:", e);
+                }
+            } else {
+                task.status = newStatus;
+                renderTasks();
+            }
+            showToast('ステータスを更新しました', 'info');
+        };
+
+        // タスク削除
+        window.deleteTask = async function(taskId) {
+            if (isFirebaseActive && db) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', 'chokubai-app', 'public', 'data', 'tasks', taskId));
+                } catch (e) {
+                    console.error("Delete task error:", e);
+                }
+            } else {
+                localTasks = localTasks.filter(t => t.id !== taskId);
+                renderTasks();
+            }
+            showToast('タスクを削除しました', 'info');
+        };
+
+        // カンバンレンダリング
+        function renderTasks() {
+            const columns = {
+                todo: document.getElementById('kanban-todo'),
+                in_progress: document.getElementById('kanban-in_progress'),
+                pending: document.getElementById('kanban-pending'),
+                done: document.getElementById('kanban-done')
+            };
+
+            const counts = { todo: 0, in_progress: 0, pending: 0, done: 0 };
+
+            // リセット
+            Object.values(columns).forEach(col => { if(col) col.innerHTML = ''; });
+
+            localTasks.forEach(task => {
+                const status = task.status || 'todo';
+                if (counts[status] !== undefined) counts[status]++;
+
+                const targetCol = columns[status];
+                if (!targetCol) return;
+
+                const priorityBadge = task.priority === 'high' 
+                    ? '<span class="px-2 py-0.5 text-[10px] bg-rose-100 text-rose-700 font-bold rounded">🔥 高</span>'
+                    : task.priority === 'medium'
+                    ? '<span class="px-2 py-0.5 text-[10px] bg-amber-100 text-amber-800 font-bold rounded">⚡ 中</span>'
+                    : '<span class="px-2 py-0.5 text-[10px] bg-slate-200 text-slate-700 font-bold rounded">🌱 低</span>';
+
+                const cardHtml = `
+                    <div class="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200 space-y-2.5 hover:border-green-400 transition">
+                        <div class="flex items-start justify-between gap-1">
+                            <span class="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${escapeHTML(task.category || 'その他')}</span>
+                            ${priorityBadge}
+                        </div>
+
+                        <h5 class="font-bold text-sm text-slate-800 leading-snug">${escapeHTML(task.title)}</h5>
+
+                        ${task.description ? `<p class="text-xs text-slate-500 line-clamp-2">${escapeHTML(task.description)}</p>` : ''}
+
+                        <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-100">
+                            <span class="flex items-center text-[11px] text-slate-600 font-medium">
+                                <i class="fa-regular fa-user mr-1 text-slate-400"></i> ${escapeHTML(task.assignee || '未設定')}
+                            </span>
+                            <div class="flex items-center space-x-1">
+                                <select onchange="updateTaskStatus('${task.id}', this.value)" class="text-[11px] border border-slate-200 rounded px-1 py-0.5 bg-slate-50 text-slate-700 font-bold outline-none">
+                                    <option value="todo" ${status==='todo'?'selected':''}>未対応</option>
+                                    <option value="in_progress" ${status==='in_progress'?'selected':''}>対応中</option>
+                                    <option value="pending" ${status==='pending'?'selected':''}>保留</option>
+                                    <option value="done" ${status==='done'?'selected':''}>完了</option>
+                                </select>
+                                <button onclick="deleteTask('${task.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="削除">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                targetCol.insertAdjacentHTML('beforeend', cardHtml);
+            });
+
+            // バッジ更新
+            document.getElementById('count-todo').textContent = counts.todo;
+            document.getElementById('count-in_progress').textContent = counts.in_progress;
+            document.getElementById('count-pending').textContent = counts.pending;
+            document.getElementById('count-done').textContent = counts.done;
+            document.getElementById('badge-tasks-count').textContent = localTasks.length;
+        }
+
+        // 初回データロード実行
+        initDataListeners();
+    </script>
+
+    <!-- UIコントロール用スクリプト -->
+    <script>
+        // タブ切り替え
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-green-700', 'text-white', 'shadow');
+                btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+            });
+
+            const targetPane = document.getElementById(`tab-content-${tabId}`);
+            const targetBtn = document.getElementById(`tab-btn-${tabId}`);
+
+            if (targetPane) targetPane.classList.remove('hidden');
+            if (targetBtn) {
+                targetBtn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                targetBtn.classList.add('bg-green-700', 'text-white', 'shadow');
+            }
+        }
+
+        // 投稿フォームへスクロール
+        function scrollToFeedbackForm() {
+            const form = document.getElementById('feedback-form-card');
+            if (form) {
+                form.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // モーダル操作
+        function openTaskModal() {
+            document.getElementById('task-modal').classList.remove('hidden');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('task-modal').classList.add('hidden');
+            document.getElementById('task-form').reset();
+            document.getElementById('task-edit-id').value = '';
+            document.getElementById('task-source-feedback-id').value = '';
+        }
+
+        function toggleSetupModal(show) {
+            const modal = document.getElementById('setup-modal');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        // チェックリスト進行状態更新
+        function updateChecklistProgress() {
+            const morningBoxes = document.querySelectorAll('#morning-checklist input[type="checkbox"]');
+            const morningChecked = document.querySelectorAll('#morning-checklist input[type="checkbox"]:checked').length;
+            document.getElementById('morning-progress').textContent = `${morningChecked}/${morningBoxes.length}`;
+
+            const eveningBoxes = document.querySelectorAll('#evening-checklist input[type="checkbox"]');
+            const eveningChecked = document.querySelectorAll('#evening-checklist input[type="checkbox"]:checked').length;
+            document.getElementById('evening-progress').textContent = `${eveningChecked}/${eveningBoxes.length}`;
+        }
+
+        function resetChecklist() {
+            document.querySelectorAll('#morning-checklist input, #evening-checklist input').forEach(cb => cb.checked = false);
+            updateChecklistProgress();
+            showToast('チェックリストをリセットしました', 'info');
+        }
+
+        // トースト通知を表示
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-emerald-800' : type === 'error' ? 'bg-rose-800' : 'bg-slate-800';
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-400' : type === 'error' ? 'fa-circle-exclamation text-rose-400' : 'fa-circle-info text-amber-400';
+
+            toast.className = `pointer-events-auto flex items-center space-x-2 text-white text-xs px-4 py-3 rounded-xl shadow-xl transition-all transform translate-y-2 opacity-0 ${bgColor}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-sm"></i><span>${escapeHTML(message)}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // エスケープ処理
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
