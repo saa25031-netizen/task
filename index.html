@@ -1,15 +1,23 @@
 <!DOCTYPE html>
-<html lang="ja" class="h-full bg-slate-50">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskFlow - タスク管理アプリ</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
                     colors: {
                         brand: {
                             50: '#eff6ff',
@@ -23,268 +31,206 @@
             }
         }
     </script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .glass-header {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
         }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
+        .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
-            height: 6px;
         }
-        ::-webkit-scrollbar-track {
+        .custom-scrollbar::-webkit-scrollbar-track {
             background: #f1f5f9;
         }
-        ::-webkit-scrollbar-thumb {
+        .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
         }
-        ::-webkit-scrollbar-thumb:hover {
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
     </style>
 </head>
-<body class="h-full flex flex-col text-slate-800 antialiased">
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <!-- Header / Navigation -->
-    <header class="sticky top-0 z-30 glass-header border-b border-slate-200/80 shadow-sm">
+    <!-- Header / Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-500/20">
+                    <i class="fa-solid fa-list-check"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">TaskFlow</h1>
-                    <p class="text-xs text-slate-500 font-medium hidden sm:block">スマートタスクマネージャー</p>
-                </div>
-            </div>
-
-            <!-- Realtime / Mode Status Indicator -->
-            <div class="flex items-center space-x-2 text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200/80">
-                <span id="sync-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                <span id="sync-status" class="font-medium">接続初期化中...</span>
+                <h1 class="font-bold text-xl leading-none text-slate-900">TaskFlow</h1>
+                <span class="text-xs text-slate-500">スマートタスク管理</span>
             </div>
         </div>
-    </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col space-y-6">
+        <!-- Sync Status Indicator -->
+        <div id="sync-status" class="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-medium border border-emerald-200/60">
+            <span id="sync-indicator-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="sync-status-text">クラウド同期中</span>
+        </div>
+    </div>
+</header>
 
-        <!-- Task Dashboard View -->
-        <div id="view-dashboard" class="flex-1 flex flex-col space-y-6">
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            <!-- Stats Bar -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
-                    </div>
+        <!-- Application Workspace -->
+        <div id="app-workspace" class="space-y-6">
+
+            <!-- Stats Dashboard -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium text-slate-500">全タスク</div>
-                        <div id="stat-total" class="text-2xl font-bold text-slate-800">0</div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">全タスク</p>
+                        <h3 id="stat-total" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <i class="fa-solid fa-list-ul"></i>
                     </div>
                 </div>
-
-                <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium text-slate-500">未着手</div>
-                        <div id="stat-todo" class="text-2xl font-bold text-slate-800">0</div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">未完了</p>
+                        <h3 id="stat-pending" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <i class="fa-regular fa-clock"></i>
                     </div>
                 </div>
-
-                <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
-                        <svg class="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium text-slate-500">進行中</div>
-                        <div id="stat-doing" class="text-2xl font-bold text-slate-800">0</div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">完了済み</p>
+                        <h3 id="stat-completed" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-regular fa-circle-check"></i>
                     </div>
                 </div>
-
-                <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <div class="text-xs font-medium text-slate-500">完了</div>
-                        <div id="stat-done" class="text-2xl font-bold text-slate-800">0</div>
+                        <p class="text-xs font-medium text-slate-500 uppercase">高優先度</p>
+                        <h3 id="stat-high" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Controls & Filters Bar -->
-            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="flex flex-1 flex-col sm:flex-row gap-3">
-                    <!-- Search Input -->
-                    <div class="relative flex-1">
-                        <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <input type="text" id="filter-search" placeholder="タスクを検索..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
-                    </div>
+            <!-- Filter & Action Controls Bar -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+                <!-- Search Box -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="search-input" placeholder="タスクを検索..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all">
+                </div>
 
-                    <!-- Category Filter -->
-                    <select id="filter-category" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                        <option value="all">すべてのカテゴリー</option>
-                        <option value="仕事">仕事</option>
-                        <option value="個人">個人</option>
-                        <option value="学習">学習</option>
-                        <option value="買い物">買い物</option>
-                        <option value="その他">その他</option>
+                <!-- Filter Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Status Filter -->
+                    <select id="filter-status" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">すべてのステータス</option>
+                        <option value="pending">未完了のみ</option>
+                        <option value="completed">完了済みのみ</option>
                     </select>
 
                     <!-- Priority Filter -->
-                    <select id="filter-priority" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <select id="filter-priority" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all">すべての優先度</option>
                         <option value="high">優先度: 高</option>
                         <option value="medium">優先度: 中</option>
                         <option value="low">優先度: 低</option>
                     </select>
-                </div>
 
-                <!-- Add Task Button -->
-                <button id="btn-open-add-modal" class="inline-flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition-all duration-200 active:scale-95 shrink-0 text-sm">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                    <span>新規タスク追加</span>
-                </button>
+                    <!-- Add Task Button -->
+                    <button id="btn-open-modal" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm shadow-blue-500/20">
+                        <i class="fa-solid fa-plus"></i>
+                        新規タスク
+                    </button>
+                </div>
             </div>
 
-            <!-- Kanban Board Grid View -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+            <!-- Task List Container -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div id="task-list" class="divide-y divide-slate-100 min-h-[250px]">
+                    <!-- Dynamic tasks will be injected here -->
+                </div>
                 
-                <!-- Column: TODO -->
-                <div class="bg-slate-100/70 p-4 rounded-2xl border border-slate-200/60 flex flex-col min-h-[400px]">
-                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-3 h-3 rounded-full bg-amber-400"></span>
-                            <h3 class="font-bold text-slate-700 text-sm">未着手</h3>
-                            <span id="badge-count-todo" class="bg-slate-200 text-slate-600 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
-                        </div>
+                <!-- Empty Task State -->
+                <div id="empty-state" class="hidden py-16 text-center">
+                    <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                        <i class="fa-solid fa-inbox"></i>
                     </div>
-                    <div id="list-todo" class="space-y-3 flex-1 overflow-y-auto"></div>
+                    <p class="text-slate-600 font-medium text-sm">タスクが見つかりません</p>
+                    <p class="text-slate-400 text-xs mt-1">新しいタスクを追加するか、フィルターを変更してください。</p>
                 </div>
-
-                <!-- Column: IN PROGRESS -->
-                <div class="bg-slate-100/70 p-4 rounded-2xl border border-slate-200/60 flex flex-col min-h-[400px]">
-                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
-                            <h3 class="font-bold text-slate-700 text-sm">進行中</h3>
-                            <span id="badge-count-doing" class="bg-slate-200 text-slate-600 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
-                        </div>
-                    </div>
-                    <div id="list-doing" class="space-y-3 flex-1 overflow-y-auto"></div>
-                </div>
-
-                <!-- Column: DONE -->
-                <div class="bg-slate-100/70 p-4 rounded-2xl border border-slate-200/60 flex flex-col min-h-[400px]">
-                    <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                        <div class="flex items-center space-x-2">
-                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                            <h3 class="font-bold text-slate-700 text-sm">完了</h3>
-                            <span id="badge-count-done" class="bg-slate-200 text-slate-600 text-xs font-semibold px-2 py-0.5 rounded-full">0</span>
-                        </div>
-                    </div>
-                    <div id="list-done" class="space-y-3 flex-1 overflow-y-auto"></div>
-                </div>
-
             </div>
-
         </div>
-
     </main>
 
-    <!-- Task Form Modal (Create / Edit) -->
-    <div id="task-modal" class="fixed inset-0 z-50 hidden bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-slate-100 overflow-hidden transform transition-all">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <h3 id="modal-title" class="font-bold text-slate-800 text-lg">新規タスクの作成</h3>
-                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    <!-- Task Modal (Create / Edit) -->
+    <div id="task-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h3 id="modal-title" class="font-bold text-lg text-slate-800">新規タスクの追加</h3>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-
-            <!-- Modal Form -->
+            
             <form id="task-form" class="p-6 space-y-4">
                 <input type="hidden" id="task-id">
 
+                <!-- Title Input -->
                 <div>
-                    <label for="task-title" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">タイトル <span class="text-red-500">*</span></label>
-                    <input type="text" id="task-title" required placeholder="例: Firebaseの設定を行う" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">タイトル <span class="text-rose-500">*</span></label>
+                    <input type="text" id="task-title" required placeholder="タスクの件名を入力..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
+                <!-- Description Input -->
                 <div>
-                    <label for="task-desc" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">詳細メモ</label>
-                    <textarea id="task-desc" rows="3" placeholder="タスクの詳しい説明やメモ..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"></textarea>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">詳細メモ</label>
+                    <textarea id="task-desc" rows="3" placeholder="詳細やメモを入力 (任意)..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 custom-scrollbar"></textarea>
                 </div>
 
+                <!-- Priority & Due Date -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="task-category" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">カテゴリー</label>
-                        <select id="task-category" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                            <option value="仕事">仕事</option>
-                            <option value="個人">個人</option>
-                            <option value="学習">学習</option>
-                            <option value="買い物">買い物</option>
-                            <option value="その他">その他</option>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">優先度</label>
+                        <select id="task-priority" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="low">低</option>
+                            <option value="medium" selected>中</option>
+                            <option value="high">高</option>
                         </select>
                     </div>
-
                     <div>
-                        <label for="task-priority" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">優先度</label>
-                        <select id="task-priority" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                            <option value="low">低 (Low)</option>
-                            <option value="medium" selected>中 (Medium)</option>
-                            <option value="high">高 (High)</option>
-                        </select>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">期限日</label>
+                        <input type="date" id="task-duedate" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="task-status" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">ステータス</label>
-                        <select id="task-status" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                            <option value="todo">未着手</option>
-                            <option value="doing">進行中</option>
-                            <option value="done">完了</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="task-duedate" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">期限日</label>
-                        <input type="date" id="task-duedate" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                    </div>
+                <!-- Category Tag -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">カテゴリ / タグ</label>
+                    <input type="text" id="task-category" placeholder="例: 仕事, 買い物, 個人..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
-                <!-- Modal Actions -->
-                <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
-                    <button type="button" id="btn-cancel-modal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors">
-                        キャンセル
-                    </button>
-                    <button type="submit" id="btn-save-task" class="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md shadow-blue-500/20 transition-all flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        <span>保存する</span>
-                    </button>
+                <!-- Actions -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button type="button" id="btn-cancel-modal" class="px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">キャンセル</button>
+                    <button type="submit" id="btn-save-task" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm shadow-blue-500/20">保存する</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Notification Toast Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Firebase SDK & Application Logic -->
+    <!-- Firebase Logic Integration (ES Modules) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
@@ -295,14 +241,15 @@
         import { 
             getFirestore, 
             collection, 
+            doc, 
             addDoc, 
             updateDoc, 
             deleteDoc, 
-            doc, 
             onSnapshot, 
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBsrqSoAqHpsxwhD1SSlzBMh_i8rvF38_A",
             authDomain: "task-ac91f.firebaseapp.com",
@@ -313,414 +260,432 @@
         };
 
         // Initialize Firebase
-        let app, auth, db;
-        try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) {
-            console.warn("Firebase Init Warning:", e);
-        }
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
         // Application State
-        let useLocalStorage = false;
         let currentUser = null;
         let unsubscribeTasks = null;
-        let allTasks = [];
+        let tasksData = [];
+        let isLocalStorageMode = false;
 
         // DOM Elements
-        const syncStatus = document.getElementById('sync-status');
-        const syncDot = document.getElementById('sync-dot');
+        const taskList = document.getElementById('task-list');
+        const emptyState = document.getElementById('empty-state');
+
+        const filterStatus = document.getElementById('filter-status');
+        const filterPriority = document.getElementById('filter-priority');
+        const searchInput = document.getElementById('search-input');
+
         const taskModal = document.getElementById('task-modal');
         const taskForm = document.getElementById('task-form');
         const modalTitle = document.getElementById('modal-title');
         const taskIdInput = document.getElementById('task-id');
-        const taskTitleInput = document.getElementById('task-title');
-        const taskDescInput = document.getElementById('task-desc');
-        const taskCategoryInput = document.getElementById('task-category');
-        const taskPriorityInput = document.getElementById('task-priority');
-        const taskStatusInput = document.getElementById('task-status');
-        const taskDueDateInput = document.getElementById('task-duedate');
+        const btnOpenModal = document.getElementById('btn-open-modal');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCancelModal = document.getElementById('btn-cancel-modal');
 
-        const filterSearch = document.getElementById('filter-search');
-        const filterCategory = document.getElementById('filter-category');
-        const filterPriority = document.getElementById('filter-priority');
-
-        function enableLocalStorageMode(reason = "ローカル保存モード") {
-            useLocalStorage = true;
-            if (syncDot) {
-                syncDot.className = "w-2.5 h-2.5 rounded-full bg-blue-500";
-            }
-            if (syncStatus) {
-                syncStatus.textContent = reason;
-            }
-            loadTasksFromLocalStorage();
-        }
-
-        function loadTasksFromLocalStorage() {
-            try {
-                const saved = localStorage.getItem('taskflow_items');
-                allTasks = saved ? JSON.parse(saved) : [];
-            } catch (err) {
-                console.error("LocalStorage load error:", err);
-                allTasks = [];
-            }
-            renderTasks();
-        }
-
-        function saveTasksToLocalStorage() {
-            try {
-                localStorage.setItem('taskflow_items', JSON.stringify(allTasks));
-            } catch (err) {
-                console.error("LocalStorage save error:", err);
-            }
-            renderTasks();
-        }
-
-        if (auth) {
-            signInAnonymously(auth).catch(error => {
-                console.warn("Firebase Anonymous Auth status:", error.code);
-                let reason = "ローカル保存モード";
-                if (error.code === 'auth/configuration-not-found') {
-                    reason = "ローカル保存 (Firebase匿名認証が未有効)";
-                }
-                enableLocalStorageMode(reason);
-                showToast("Firebase未設定のためローカル保存で動作中", "info");
-            });
-
-            onAuthStateChanged(auth, (user) => {
-                if (user && !useLocalStorage) {
-                    currentUser = user;
-                    if (syncDot) syncDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
-                    if (syncStatus) syncStatus.textContent = "クラウド同期中";
-                    subscribeToTasks(user.uid);
-                } else if (!useLocalStorage) {
-                    enableLocalStorageMode("ローカル保存モード");
-                }
-            });
-        } else {
-            enableLocalStorageMode("ローカル保存モード");
-        }
-
-        function subscribeToTasks(userId) {
-            if (unsubscribeTasks) unsubscribeTasks();
-
-            const tasksRef = collection(db, 'users', userId, 'tasks');
-
-            unsubscribeTasks = onSnapshot(tasksRef, (snapshot) => {
-                allTasks = snapshot.docs.map(docSnap => ({
-                    id: docSnap.id,
-                    ...docSnap.data()
-                }));
-                
-                allTasks.sort((a, b) => {
-                    const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
-                    const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
-                    return timeB - timeA;
-                });
-
-                renderTasks();
-            }, (error) => {
-                console.warn("Firestore Listen Error, falling back to local:", error);
-                enableLocalStorageMode("ローカル保存モード (同期エラー)");
-            });
-        }
-
-        document.getElementById('btn-open-add-modal').addEventListener('click', () => openModal());
-        document.getElementById('btn-close-modal').addEventListener('click', closeModal);
-        document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
-
-        function openModal(task = null) {
-            taskForm.reset();
-            if (task) {
-                modalTitle.textContent = "タスクの編集";
-                taskIdInput.value = task.id;
-                taskTitleInput.value = task.title || '';
-                taskDescInput.value = task.description || '';
-                taskCategoryInput.value = task.category || '仕事';
-                taskPriorityInput.value = task.priority || 'medium';
-                taskStatusInput.value = task.status || 'todo';
-                taskDueDateInput.value = task.dueDate || '';
-            } else {
-                modalTitle.textContent = "新規タスクの作成";
-                taskIdInput.value = '';
-                taskStatusInput.value = 'todo';
-            }
-            taskModal.classList.remove('hidden');
-        }
-
-        function closeModal() {
-            taskModal.classList.add('hidden');
-        }
-
-        taskForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const taskId = taskIdInput.value;
-            const taskData = {
-                title: taskTitleInput.value.trim(),
-                description: taskDescInput.value.trim(),
-                category: taskCategoryInput.value,
-                priority: taskPriorityInput.value,
-                status: taskStatusInput.value,
-                dueDate: taskDueDateInput.value,
-                updatedAt: Date.now()
-            };
-
-            if (useLocalStorage) {
-                if (taskId) {
-                    const index = allTasks.findIndex(t => t.id === taskId);
-                    if (index !== -1) {
-                        allTasks[index] = { ...allTasks[index], ...taskData };
-                    }
-                } else {
-                    taskData.id = 'task_' + Date.now();
-                    taskData.createdAt = Date.now();
-                    allTasks.unshift(taskData);
-                }
-                saveTasksToLocalStorage();
-                showToast(taskId ? 'タスクを更新しました' : 'タスクを作成しました', 'success');
-                closeModal();
-                return;
-            }
-
-            if (!currentUser) return;
-
-            const tasksRef = collection(db, 'users', currentUser.uid, 'tasks');
-
-            try {
-                if (taskId) {
-                    const docRef = doc(db, 'users', currentUser.uid, 'tasks', taskId);
-                    await updateDoc(docRef, { ...taskData, updatedAt: serverTimestamp() });
-                    showToast('タスクを更新しました', 'success');
-                } else {
-                    taskData.createdAt = serverTimestamp();
-                    await addDoc(tasksRef, taskData);
-                    showToast('タスクを作成しました', 'success');
-                }
-                closeModal();
-            } catch (error) {
-                console.error("Save Task Error:", error);
-                showToast("保存に失敗したためローカルに保存します", "info");
-                enableLocalStorageMode("ローカル保存モード");
-            }
-        });
-
-        window.updateTaskStatus = async (taskId, newStatus) => {
-            if (useLocalStorage) {
-                const task = allTasks.find(t => t.id === taskId);
-                if (task) {
-                    task.status = newStatus;
-                    task.updatedAt = Date.now();
-                    saveTasksToLocalStorage();
-                    showToast('ステータスを変更しました', 'info');
-                }
-                return;
-            }
-
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'tasks', taskId);
-                await updateDoc(docRef, { 
-                    status: newStatus,
-                    updatedAt: serverTimestamp()
-                });
-                showToast('ステータスを変更しました', 'info');
-            } catch (error) {
-                console.error("Update Status Error:", error);
-                showToast("変更に失敗しました", "error");
-            }
-        };
-
-        window.editTask = (taskId) => {
-            const task = allTasks.find(t => t.id === taskId);
-            if (task) openModal(task);
-        };
-
-        window.deleteTask = async (taskId) => {
-            if (!confirm('このタスクを削除してもよろしいですか？')) return;
-
-            if (useLocalStorage) {
-                allTasks = allTasks.filter(t => t.id !== taskId);
-                saveTasksToLocalStorage();
-                showToast('タスクを削除しました', 'info');
-                return;
-            }
-
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'tasks', taskId);
-                await deleteDoc(docRef);
-                showToast('タスクを削除しました', 'info');
-            } catch (error) {
-                console.error("Delete Error:", error);
-                showToast("削除に失敗しました", "error");
-            }
-        };
-
-        filterSearch.addEventListener('input', renderTasks);
-        filterCategory.addEventListener('change', renderTasks);
-        filterPriority.addEventListener('change', renderTasks);
-
-        function renderTasks() {
-            const searchQuery = filterSearch.value.toLowerCase().trim();
-            const categoryFilter = filterCategory.value;
-            const priorityFilter = filterPriority.value;
-
-            const filteredTasks = allTasks.filter(task => {
-                const matchesSearch = task.title.toLowerCase().includes(searchQuery) || 
-                                      (task.description && task.description.toLowerCase().includes(searchQuery));
-                const matchesCategory = categoryFilter === 'all' || task.category === categoryFilter;
-                const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
-
-                return matchesSearch && matchesCategory && matchesPriority;
-            });
-
-            const todoList = filteredTasks.filter(t => t.status === 'todo');
-            const doingList = filteredTasks.filter(t => t.status === 'doing');
-            const doneList = filteredTasks.filter(t => t.status === 'done');
-
-            document.getElementById('stat-total').textContent = allTasks.length;
-            document.getElementById('stat-todo').textContent = allTasks.filter(t => t.status === 'todo').length;
-            document.getElementById('stat-doing').textContent = allTasks.filter(t => t.status === 'doing').length;
-            document.getElementById('stat-done').textContent = allTasks.filter(t => t.status === 'done').length;
-
-            document.getElementById('badge-count-todo').textContent = todoList.length;
-            document.getElementById('badge-count-doing').textContent = doingList.length;
-            document.getElementById('badge-count-done').textContent = doneList.length;
-
-            renderColumn('list-todo', todoList);
-            renderColumn('list-doing', doingList);
-            renderColumn('list-done', doneList);
-        }
-
-        function renderColumn(elementId, tasks) {
-            const container = document.getElementById(elementId);
-            if (!container) return;
-
-            if (tasks.length === 0) {
-                container.innerHTML = `
-                    <div class="h-32 flex flex-col items-center justify-center text-slate-400 text-xs border-2 border-dashed border-slate-200 rounded-xl">
-                        <svg class="w-6 h-6 mb-1 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
-                        <span>タスクはありません</span>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = tasks.map(task => createCardHTML(task)).join('');
-        }
-
-        function createCardHTML(task) {
-            const priorityBadge = {
-                high: '<span class="bg-red-50 text-red-600 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full">高</span>',
-                medium: '<span class="bg-amber-50 text-amber-600 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">中</span>',
-                low: '<span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full">低</span>'
-            }[task.priority || 'medium'];
-
-            let dueDateHTML = '';
-            if (task.dueDate) {
-                const today = new Date().toISOString().split('T')[0];
-                const isOverdue = task.dueDate < today && task.status !== 'done';
-                const textColor = isOverdue ? 'text-red-500 font-semibold' : 'text-slate-400';
-                dueDateHTML = `
-                    <div class="text-[11px] ${textColor} flex items-center space-x-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        <span>${task.dueDate}${isOverdue ? ' (期限切れ)' : ''}</span>
-                    </div>
-                `;
-            }
-
-            let moveButtons = '';
-            if (task.status === 'todo') {
-                moveButtons = `
-                    <button onclick="updateTaskStatus('${task.id}', 'doing')" class="p-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center space-x-1" title="進行中に移動">
-                        <span>進行中へ</span>
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                    </button>`;
-            } else if (task.status === 'doing') {
-                moveButtons = `
-                    <button onclick="updateTaskStatus('${task.id}', 'todo')" class="p-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg flex items-center space-x-1" title="未着手に戻す">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-                    </button>
-                    <button onclick="updateTaskStatus('${task.id}', 'done')" class="p-1.5 text-xs text-emerald-600 hover:bg-emerald-50 rounded-lg flex items-center space-x-1" title="完了に移動">
-                        <span>完了へ</span>
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    </button>
-                `;
-            } else if (task.status === 'done') {
-                moveButtons = `
-                    <button onclick="updateTaskStatus('${task.id}', 'doing')" class="p-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center space-x-1" title="進行中に戻す">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                        <span>戻す</span>
-                    </button>`;
-            }
-
-            return `
-                <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow space-y-3 group">
-                    <div class="flex items-start justify-between gap-2">
-                        <h4 class="font-semibold text-slate-800 text-sm leading-snug break-words flex-1 ${task.status === 'done' ? 'line-through text-slate-400' : ''}">${escapeHTML(task.title)}</h4>
-                        <div class="flex items-center space-x-1 opacity-90 group-hover:opacity-100">
-                            <button onclick="editTask('${task.id}')" class="p-1 text-slate-400 hover:text-blue-600 text-xs rounded" title="編集">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                            </button>
-                            <button onclick="deleteTask('${task.id}')" class="p-1 text-slate-400 hover:text-red-600 text-xs rounded" title="削除">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    ${task.description ? `<p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">${escapeHTML(task.description)}</p>` : ''}
-
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-                        <div class="flex items-center space-x-1.5">
-                            <span class="bg-slate-100 text-slate-600 text-[10px] font-medium px-2 py-0.5 rounded-md">${escapeHTML(task.category || 'その他')}</span>
-                            ${priorityBadge}
-                        </div>
-                        ${dueDateHTML}
-                    </div>
-
-                    <div class="flex items-center justify-end space-x-1 pt-1">
-                        ${moveButtons}
-                    </div>
-                </div>
-            `;
-        }
-
-        function escapeHTML(str) {
-            if (!str) return '';
-            return str.replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
-        }
-
+        // Toast Manager
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-
-            const bgColors = {
-                success: 'bg-slate-800 text-emerald-400 border-emerald-500/30',
-                error: 'bg-slate-800 text-red-400 border-red-500/30',
-                info: 'bg-slate-800 text-blue-400 border-blue-500/30'
-            };
-
-            toast.className = `flex items-center space-x-2 px-4 py-3 rounded-xl border shadow-lg text-xs font-medium ${bgColors[type] || bgColors.info} transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
-            toast.innerHTML = `
-                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>${escapeHTML(message)}</span>
-            `;
-
+            
+            const bgClass = type === 'error' ? 'bg-rose-600 text-white' : 
+                            type === 'success' ? 'bg-emerald-600 text-white' : 
+                            'bg-slate-800 text-white';
+            
+            toast.className = `px-4 py-3 rounded-xl shadow-lg text-sm font-medium ${bgClass} transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
+            
+            const icon = type === 'error' ? 'fa-triangle-exclamation' :
+                         type === 'success' ? 'fa-circle-check' : 'fa-info-circle';
+                         
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
             container.appendChild(toast);
 
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 toast.classList.remove('translate-y-2', 'opacity-0');
-            });
+            }, 10);
 
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
+
+        // Enable LocalStorage fallback if Firebase is unconfigured or offline
+        function enableLocalStorageMode() {
+            if (isLocalStorageMode) return;
+            isLocalStorageMode = true;
+
+            const statusBox = document.getElementById('sync-status');
+            if (statusBox) {
+                statusBox.className = "flex items-center space-x-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-medium border border-amber-200/60";
+                statusBox.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500"></span><span>ローカル保存モード</span>';
+            }
+
+            const stored = localStorage.getItem('taskflow_tasks');
+            if (stored) {
+                try {
+                    tasksData = JSON.parse(stored);
+                } catch (e) {
+                    tasksData = [];
+                }
+            } else {
+                tasksData = [];
+            }
+            sortAndRenderTasks();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('taskflow_tasks', JSON.stringify(tasksData));
+            sortAndRenderTasks();
+        }
+
+        function sortAndRenderTasks() {
+            tasksData.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1;
+                }
+                const timeA = a.createdAt?.seconds || a.createdAt || 0;
+                const timeB = b.createdAt?.seconds || b.createdAt || 0;
+                return timeB - timeA;
+            });
+
+            renderTasks();
+            updateStats();
+        }
+
+        // Auto Anonymous Sign-In with Fallback
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                setupTasksListener();
+            } else {
+                try {
+                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.warn("Firebase Auth is disabled or unconfigured. Falling back to LocalStorage:", error);
+                    enableLocalStorageMode();
+                }
+            }
+        });
+
+        // Firestore Collection Reference
+        function getUserTasksRef() {
+            if (!currentUser) return null;
+            return collection(db, 'users', currentUser.uid, 'tasks');
+        }
+
+        // Real-time Tasks Sync
+        function setupTasksListener() {
+            const tasksRef = getUserTasksRef();
+            if (!tasksRef) {
+                enableLocalStorageMode();
+                return;
+            }
+
+            unsubscribeTasks = onSnapshot(tasksRef, (snapshot) => {
+                tasksData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                sortAndRenderTasks();
+            }, (error) => {
+                console.warn("Firestore Error, falling back to LocalStorage:", error);
+                enableLocalStorageMode();
+            });
+        }
+
+        // Render Dashboard Stats
+        function updateStats() {
+            const total = tasksData.length;
+            const completed = tasksData.filter(t => t.completed).length;
+            const pending = total - completed;
+            const high = tasksData.filter(t => t.priority === 'high' && !t.completed).length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-high').textContent = high;
+        }
+
+        // Filter and Search Logic
+        function getFilteredTasks() {
+            const statusVal = filterStatus.value;
+            const priorityVal = filterPriority.value;
+            const searchVal = searchInput.value.toLowerCase().trim();
+
+            return tasksData.filter(task => {
+                if (statusVal === 'pending' && task.completed) return false;
+                if (statusVal === 'completed' && !task.completed) return false;
+
+                if (priorityVal !== 'all' && task.priority !== priorityVal) return false;
+
+                if (searchVal) {
+                    const matchTitle = task.title?.toLowerCase().includes(searchVal);
+                    const matchDesc = task.description?.toLowerCase().includes(searchVal);
+                    const matchCat = task.category?.toLowerCase().includes(searchVal);
+                    if (!matchTitle && !matchDesc && !matchCat) return false;
+                }
+
+                return true;
+            });
+        }
+
+        // Render Task Items
+        function renderTasks() {
+            const filtered = getFilteredTasks();
+            taskList.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            filtered.forEach(task => {
+                const item = document.createElement('div');
+                item.className = `p-4 hover:bg-slate-50/80 transition-colors flex items-start gap-4 ${task.completed ? 'opacity-60 bg-slate-50/40' : ''}`;
+                
+                let priorityBadge = '';
+                if (task.priority === 'high') {
+                    priorityBadge = '<span class="px-2 py-0.5 text-xs font-semibold rounded bg-rose-100 text-rose-700">高</span>';
+                } else if (task.priority === 'medium') {
+                    priorityBadge = '<span class="px-2 py-0.5 text-xs font-semibold rounded bg-amber-100 text-amber-700">中</span>';
+                } else {
+                    priorityBadge = '<span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-100 text-slate-600">低</span>';
+                }
+
+                const catTag = task.category ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-600"><i class="fa-solid fa-tag text-[10px] mr-1"></i>${escapeHtml(task.category)}</span>` : '';
+
+                let dueDateText = '';
+                if (task.dueDate) {
+                    const isOverdue = !task.completed && new Date(task.dueDate) < new Date().setHours(0,0,0,0);
+                    dueDateText = `<span class="text-xs ${isOverdue ? 'text-rose-600 font-semibold' : 'text-slate-400'}"><i class="fa-regular fa-calendar mr-1"></i>${task.dueDate}</span>`;
+                }
+
+                item.innerHTML = `
+                    <button class="btn-toggle-status mt-1 text-slate-300 hover:text-blue-600 transition-colors" data-id="${task.id}" data-completed="${task.completed}">
+                        ${task.completed ? 
+                            '<i class="fa-solid fa-circle-check text-xl text-emerald-500"></i>' : 
+                            '<i class="fa-regular fa-circle text-xl"></i>'}
+                    </button>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <h4 class="font-semibold text-slate-900 text-base ${task.completed ? 'line-through text-slate-400' : ''}">${escapeHtml(task.title)}</h4>
+                            ${priorityBadge}
+                            ${catTag}
+                        </div>
+                        ${task.description ? `<p class="text-sm text-slate-600 mb-2 whitespace-pre-line ${task.completed ? 'line-through text-slate-400' : ''}">${escapeHtml(task.description)}</p>` : ''}
+                        ${dueDateText}
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <button class="btn-edit-task p-2 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors" data-id="${task.id}">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button class="btn-delete-task p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors" data-id="${task.id}">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+
+                taskList.appendChild(item);
+            });
+
+            document.querySelectorAll('.btn-toggle-status').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const currentCompleted = btn.dataset.completed === 'true';
+                    toggleTaskStatus(id, !currentCompleted);
+                });
+            });
+
+            document.querySelectorAll('.btn-edit-task').forEach(btn => {
+                btn.addEventListener('click', () => openEditModal(btn.dataset.id));
+            });
+
+            document.querySelectorAll('.btn-delete-task').forEach(btn => {
+                btn.addEventListener('click', () => deleteTask(btn.dataset.id));
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                }[m];
+            });
+        }
+
+        // Modal Controls
+        function openCreateModal() {
+            modalTitle.textContent = '新規タスクの追加';
+            taskIdInput.value = '';
+            taskForm.reset();
+            document.getElementById('task-priority').value = 'medium';
+            taskModal.classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const task = tasksData.find(t => t.id === id);
+            if (!task) return;
+
+            modalTitle.textContent = 'タスクの編集';
+            taskIdInput.value = task.id;
+            document.getElementById('task-title').value = task.title || '';
+            document.getElementById('task-desc').value = task.description || '';
+            document.getElementById('task-priority').value = task.priority || 'medium';
+            document.getElementById('task-duedate').value = task.dueDate || '';
+            document.getElementById('task-category').value = task.category || '';
+
+            taskModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            taskModal.classList.add('hidden');
+            taskForm.reset();
+        }
+
+        btnOpenModal.addEventListener('click', openCreateModal);
+        btnCloseModal.addEventListener('click', closeModal);
+        btnCancelModal.addEventListener('click', closeModal);
+
+        // Save Task
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = taskIdInput.value;
+            const title = document.getElementById('task-title').value.trim();
+            const description = document.getElementById('task-desc').value.trim();
+            const priority = document.getElementById('task-priority').value;
+            const dueDate = document.getElementById('task-duedate').value;
+            const category = document.getElementById('task-category').value.trim();
+
+            if (!title) {
+                showToast('タイトルを入力してください', 'error');
+                return;
+            }
+
+            // LocalStorage Mode
+            if (isLocalStorageMode) {
+                if (id) {
+                    const index = tasksData.findIndex(t => t.id === id);
+                    if (index !== -1) {
+                        tasksData[index] = {
+                            ...tasksData[index],
+                            title,
+                            description,
+                            priority,
+                            dueDate,
+                            category,
+                            updatedAt: Date.now()
+                        };
+                    }
+                    showToast('タスクを更新しました', 'success');
+                } else {
+                    const newTask = {
+                        id: Date.now().toString(),
+                        title,
+                        description,
+                        priority,
+                        dueDate,
+                        category,
+                        completed: false,
+                        createdAt: Date.now()
+                    };
+                    tasksData.push(newTask);
+                    showToast('新しいタスクを追加しました', 'success');
+                }
+                saveToLocalStorage();
+                closeModal();
+                return;
+            }
+
+            // Firebase Firestore Mode
+            try {
+                const tasksRef = getUserTasksRef();
+                if (id) {
+                    const docRef = doc(db, 'users', currentUser.uid, 'tasks', id);
+                    await updateDoc(docRef, {
+                        title,
+                        description,
+                        priority,
+                        dueDate,
+                        category,
+                        updatedAt: serverTimestamp()
+                    });
+                    showToast('タスクを更新しました', 'success');
+                } else {
+                    await addDoc(tasksRef, {
+                        title,
+                        description,
+                        priority,
+                        dueDate,
+                        category,
+                        completed: false,
+                        createdAt: serverTimestamp()
+                    });
+                    showToast('新しいタスクを追加しました', 'success');
+                }
+                closeModal();
+            } catch (error) {
+                console.error("Save Error:", error);
+                showToast('保存に失敗しました。ローカル保存に切り替えます', 'error');
+                enableLocalStorageMode();
+            }
+        });
+
+        // Toggle Task Completed Status
+        async function toggleTaskStatus(id, completed) {
+            if (isLocalStorageMode) {
+                const task = tasksData.find(t => t.id === id);
+                if (task) {
+                    task.completed = completed;
+                    saveToLocalStorage();
+                }
+                return;
+            }
+
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'users', currentUser.uid, 'tasks', id);
+                await updateDoc(docRef, { completed });
+            } catch (error) {
+                showToast('ステータスの更新に失敗しました', 'error');
+            }
+        }
+
+        // Delete Task
+        async function deleteTask(id) {
+            if (isLocalStorageMode) {
+                tasksData = tasksData.filter(t => t.id !== id);
+                saveToLocalStorage();
+                showToast('タスクを削除しました', 'info');
+                return;
+            }
+
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'users', currentUser.uid, 'tasks', id);
+                await deleteDoc(docRef);
+                showToast('タスクを削除しました', 'info');
+            } catch (error) {
+                showToast('削除に失敗しました', 'error');
+            }
+        }
+
+        // Filter and Search Event Listeners
+        filterStatus.addEventListener('change', renderTasks);
+        filterPriority.addEventListener('change', renderTasks);
+        searchInput.addEventListener('input', renderTasks);
+
     </script>
 </body>
 </html>
