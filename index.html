@@ -24,7 +24,9 @@
         }
     </script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .glass-header {
@@ -377,16 +379,20 @@
 
         if (auth) {
             signInAnonymously(auth).catch(error => {
-                console.warn("Firebase Anonymous Auth Disabled or Blocked:", error.code);
-                enableLocalStorageMode("ローカル保存モード (Firebase未設定)");
-                showToast("Firebase未準備のためローカル保存に切り替えました", "info");
+                console.warn("Firebase Anonymous Auth status:", error.code);
+                let reason = "ローカル保存モード";
+                if (error.code === 'auth/configuration-not-found') {
+                    reason = "ローカル保存 (Firebase匿名認証が未有効)";
+                }
+                enableLocalStorageMode(reason);
+                showToast("Firebase未設定のためローカル保存で動作中", "info");
             });
 
             onAuthStateChanged(auth, (user) => {
                 if (user && !useLocalStorage) {
                     currentUser = user;
                     if (syncDot) syncDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
-                    if (syncStatus) syncStatus.textContent = "リアルタイム同期中";
+                    if (syncStatus) syncStatus.textContent = "クラウド同期中";
                     subscribeToTasks(user.uid);
                 } else if (!useLocalStorage) {
                     enableLocalStorageMode("ローカル保存モード");
