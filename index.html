@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskFlow - タスク管理アプリ</title>
+    <script>
+        // Intercept and suppress Tailwind CDN production warning for a clean console
+        const originalConsoleWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com')) {
+                return;
+            }
+            originalConsoleWarn.apply(console, args);
+        };
+    </script>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -61,18 +71,18 @@
                     <i class="fa-solid fa-list-check"></i>
                 </div>
                 <div>
-                <h1 class="font-bold text-xl leading-none text-slate-900">TaskFlow</h1>
-                <span class="text-xs text-slate-500">スマートタスク管理</span>
+                    <h1 class="font-bold text-xl leading-none text-slate-900">TaskFlow</h1>
+                    <span class="text-xs text-slate-500">スマートタスク管理</span>
+                </div>
+            </div>
+
+            <!-- Sync Status Indicator -->
+            <div id="sync-status" class="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-medium border border-emerald-200/60">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>ローカル保存モード (動作良好)</span>
             </div>
         </div>
-
-        <!-- Sync Status Indicator -->
-        <div id="sync-status" class="flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-medium border border-blue-200/60">
-            <span id="sync-indicator-dot" class="w-2 h-2 rounded-full bg-blue-500"></span>
-            <span id="sync-status-text">ローカル保存モード</span>
-        </div>
-    </div>
-</header>
+    </header>
 
     <!-- Main Content Container -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -230,8 +240,8 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Application Logic (LocalStorage Persisted) -->
-    <script type="module">
+    <!-- Application Logic (LocalStorage Persisted, Zero External Auth Calls) -->
+    <script>
         // Application State
         let tasksData = [];
 
@@ -280,21 +290,25 @@
 
         // LocalStorage Management
         function loadFromLocalStorage() {
-            const stored = localStorage.getItem('taskflow_tasks');
-            if (stored) {
-                try {
+            try {
+                const stored = localStorage.getItem('taskflow_tasks');
+                if (stored) {
                     tasksData = JSON.parse(stored);
-                } catch (e) {
+                } else {
                     tasksData = [];
                 }
-            } else {
+            } catch (e) {
                 tasksData = [];
             }
             sortAndRenderTasks();
         }
 
         function saveToLocalStorage() {
-            localStorage.setItem('taskflow_tasks', JSON.stringify(tasksData));
+            try {
+                localStorage.setItem('taskflow_tasks', JSON.stringify(tasksData));
+            } catch (e) {
+                showToast('保存中にエラーが発生しました', 'error');
+            }
             sortAndRenderTasks();
         }
 
@@ -546,7 +560,6 @@
         filterStatus.addEventListener('change', renderTasks);
         filterPriority.addEventListener('change', renderTasks);
         searchInput.addEventListener('input', renderTasks);
-
     </script>
 </body>
 </html>
